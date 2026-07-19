@@ -144,11 +144,7 @@ const LoginPage = () => {
             </button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 rounded-xl bg-dark-800 border border-dark-700/50">
-            <p className="text-xs font-semibold text-dark-400 mb-2 uppercase tracking-widest">Tài khoản demo</p>
-            <p className="text-xs text-dark-300 font-mono">admin@company.com / Admin@123456</p>
-          </div>
+
 
           <p className="text-center text-dark-500 text-xs mt-8">© 2024 {APP_NAME}. Bản quyền đã được bảo lưu.</p>
         </div>
