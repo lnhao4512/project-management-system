@@ -25,7 +25,7 @@ const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
 const WorkloadPage = lazy(() => import('./pages/workload/WorkloadPage'));
 const NotificationsPage = lazy(() => import('./pages/notifications/NotificationsPage'));
 const TeamsPage = lazy(() => import('./pages/teams/TeamsPage'));
-const ActivityLogPage = lazy(() => import('./pages/logs/ActivityLogPage'));
+const ActivityLogPage = lazy(() => import('./pages/activityLogs/ActivityLogPage'));
 
 // Inline fallback pages (simple enough not to lazy load)
 const UnauthorizedPage = () => (
