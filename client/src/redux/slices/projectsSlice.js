@@ -33,7 +33,7 @@ export const updateProject = createAsyncThunk('projects/update', async ({ id, da
     const { data } = await projectsAPI.update(id, projectData);
     return data.data;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+    return rejectWithValue(error.response?.data?.message || 'Không thể cập nhật dự án');
   }
 });
 
@@ -42,7 +42,7 @@ export const deleteProject = createAsyncThunk('projects/delete', async (id, { re
     await projectsAPI.delete(id);
     return id;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+    return rejectWithValue(error.response?.data?.message || 'Không thể xóa dự án');
   }
 });
 

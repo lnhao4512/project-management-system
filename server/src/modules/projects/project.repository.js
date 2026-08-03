@@ -21,6 +21,19 @@ class ProjectRepository {
       .populate('members.user', 'name email avatar role');
   }
 
+  async findByName(name, excludeId = null) {
+    if (!name) return null;
+    const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const filter = {
+      name: { $regex: new RegExp(`^${escaped}$`, 'i') },
+      isDeleted: false,
+    };
+    if (excludeId) {
+      filter._id = { $ne: excludeId };
+    }
+    return Project.findOne(filter);
+  }
+
   async create(data) {
     return Project.create(data);
   }

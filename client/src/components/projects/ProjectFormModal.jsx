@@ -14,7 +14,7 @@ const ProjectFormModal = ({ project, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [selectedColor, setSelectedColor] = useState(project?.color || '#6366f1');
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, setError, formState: { errors } } = useForm({
     defaultValues: {
       name: project?.name || '',
       description: project?.description || '',
@@ -29,6 +29,7 @@ const ProjectFormModal = ({ project, onClose }) => {
     setLoading(true);
     const payload = { 
       ...data, 
+      name: data.name.trim(),
       color: selectedColor,
       startDate: data.startDate ? data.startDate.toISOString() : null,
       endDate: data.endDate ? data.endDate.toISOString() : null,
@@ -45,7 +46,11 @@ const ProjectFormModal = ({ project, onClose }) => {
       toast.success(project ? 'Đã cập nhật dự án!' : 'Đã tạo dự án!');
       onClose();
     } else {
-      toast.error(res.payload || 'Thao tác thất bại');
+      const errorMsg = res.payload || 'Thao tác thất bại';
+      if (errorMsg.includes('tồn tại') || errorMsg.includes('trùng')) {
+        setError('name', { type: 'manual', message: errorMsg });
+      }
+      toast.error(errorMsg);
     }
   };
 
@@ -67,10 +72,10 @@ const ProjectFormModal = ({ project, onClose }) => {
             <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl text-xs text-primary-500 animate-fade-in">
               <p className="font-semibold mb-1">Quy định tên dự án:</p>
               <ul className="list-disc pl-4 space-y-0.5">
+                <li>Tên dự án là duy nhất (không được trùng với dự án khác).</li>
                 <li>Độ dài từ 3 đến 100 ký tự.</li>
                 <li>Chỉ chứa chữ cái, số, khoảng trắng.</li>
                 <li>Không chứa ký tự đặc biệt.</li>
-                <li>Không bắt đầu/kết thúc bằng khoảng trắng.</li>
               </ul>
             </div>
 

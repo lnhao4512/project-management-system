@@ -139,8 +139,16 @@ class ProjectService {
    * Create project
    */
   async createProject(data, user) {
+    if (data.name) {
+      const existingProject = await projectRepository.findByName(data.name);
+      if (existingProject) {
+        throw new AppError('Tên dự án đã tồn tại trong hệ thống. Vui lòng chọn tên khác.', 400);
+      }
+    }
+
     const projectData = {
       ...data,
+      name: data.name ? data.name.trim() : data.name,
       owner: user._id,
       members: [{ user: user._id, role: 'project_manager' }],
     };
@@ -170,7 +178,19 @@ class ProjectService {
       throw new AppError('Only project owner or admin can update', 403);
     }
 
-    const updated = await projectRepository.updateById(id, data);
+    if (data.name && data.name.trim().toLowerCase() !== project.name.trim().toLowerCase()) {
+      const existingProject = await projectRepository.findByName(data.name, id);
+      if (existingProject) {
+        throw new AppError('Tên dự án đã tồn tại trong hệ thống. Vui lòng chọn tên khác.', 400);
+      }
+    }
+
+    const updatePayload = { ...data };
+    if (updatePayload.name) {
+      updatePayload.name = updatePayload.name.trim();
+    }
+
+    const updated = await projectRepository.updateById(id, updatePayload);
 
     await logService.createLog({
       action: 'project_updated',
