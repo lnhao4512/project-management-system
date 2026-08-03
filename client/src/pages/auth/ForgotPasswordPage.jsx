@@ -24,10 +24,14 @@ const ForgotPasswordPage = () => {
     
     try {
       setLoading(true);
-      await authAPI.forgotPassword({ email: cleanEmail });
+      const res = await authAPI.forgotPassword({ email: cleanEmail });
       setEmail(cleanEmail);
       setStep(1);
-      toast.success('Mã OTP đã được gửi đến email của bạn');
+      if (res.data?.data?.otp) {
+        toast.success(`Mã OTP demo của bạn: ${res.data.data.otp}`, { duration: 10000 });
+      } else {
+        toast.success('Mã OTP đã được gửi đến email của bạn');
+      }
     } catch (error) {
       const msg = error.response?.data?.message || 'Lỗi khi gửi yêu cầu';
       setPwdError(msg);

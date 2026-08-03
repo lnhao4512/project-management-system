@@ -11,9 +11,9 @@ class EmailService {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 5000,
       });
     } else {
       this.transporter = nodemailer.createTransport({
@@ -24,9 +24,9 @@ class EmailService {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 5000,
       });
     }
   }
@@ -38,7 +38,7 @@ class EmailService {
         console.log(`\n==============================================`);
         console.log(`MÃ OTP ĐẶT LẠI MẬT KHẨU CHO [${email}]: ${otp}`);
         console.log(`==============================================\n`);
-        return true; // Vẫn báo thành công để test frontend
+        return false;
       }
 
       const mailOptions = {
@@ -62,8 +62,11 @@ class EmailService {
       await this.transporter.sendMail(mailOptions);
       return true;
     } catch (error) {
-      console.error('Lỗi gửi email:', error);
-      throw new Error('Không thể gửi email OTP, vui lòng thử lại sau.');
+      console.error('Lỗi gửi email (Render chặn cổng SMTP hoặc lỗi cấu hình):', error.message || error);
+      console.log(`\n==============================================`);
+      console.log(`[FALLBACK LOG] MÃ OTP ĐẶT LẠI MẬT KHẨU CHO [${email}]: ${otp}`);
+      console.log(`==============================================\n`);
+      return false;
     }
   }
   async sendWelcomeEmail(email, password) {

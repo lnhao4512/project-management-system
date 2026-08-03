@@ -99,9 +99,9 @@ class AuthService {
     await user.save({ validateBeforeSave: false });
 
     // Gửi OTP qua email
-    await emailService.sendOTP(user.email, otp);
+    const emailSent = await emailService.sendOTP(user.email, otp);
 
-    return true;
+    return { emailSent, otp: !emailSent ? otp : undefined };
   }
 
   /**
