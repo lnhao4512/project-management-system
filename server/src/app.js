@@ -64,7 +64,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
+// ─── Root & Health Check ─────────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Task Management System API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      api: '/api/v1',
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({
     success: true,
