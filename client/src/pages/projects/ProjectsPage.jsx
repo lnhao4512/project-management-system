@@ -10,6 +10,14 @@ import { format } from 'date-fns';
 import ProjectFormModal from '../../components/projects/ProjectFormModal';
 import { exportToExcel, exportToPdf } from '../../utils/exportUtils';
 
+const statusClasses = {
+  planning: 'bg-dark-600 text-dark-300',
+  active: 'bg-success-500/20 text-success-500',
+  on_hold: 'bg-warning-500/20 text-warning-500',
+  completed: 'bg-primary-600/20 text-primary-400',
+  cancelled: 'bg-danger-500/20 text-danger-500',
+};
+
 const ProjectsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
