@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { Plus, Search, Filter, FolderOpen, Users, Calendar, MoreVertical, Trash2, Pencil, Download, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchProjects, deleteProject } from '../../redux/slices/projectsSlice';
 import { useAuth } from '../../hooks/useAuth';
@@ -11,19 +8,7 @@ import { PROJECT_STATUS_LABELS, PRIORITY_LABELS } from '../../constants';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import ProjectFormModal from '../../components/projects/ProjectFormModal';
-
-const statusClasses = {
-  planning: 'bg-dark-600 text-dark-300',
-  active: 'bg-success-500/20 text-success-500',
-  on_hold: 'bg-warning-500/20 text-warning-500',
-  completed: 'bg-primary-600/20 text-primary-400',
-  cancelled: 'bg-danger-500/20 text-danger-500',
-};
-
-const removeAccents = (str) => {
-  if (!str) return '';
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
-};
+import { exportToExcel, exportToPdf } from '../../utils/exportUtils';
 
 const ProjectsPage = () => {
   const dispatch = useDispatch();
@@ -80,51 +65,48 @@ const ProjectsPage = () => {
   };
 
   const handleExport = () => {
-    if (projects.length === 0) return;
+    if (projects.length === 0) {
+      toast.error('Không có dữ liệu dự án để xuất');
+      return;
+    }
     const dataToExport = projects.map(p => ({
-      'Tên dự án': p.name,
-      'Mô tả': p.description,
-      'Trạng thái': PROJECT_STATUS_LABELS[p.status],
+      'Tên dự án': p.name || '',
+      'Mô tả': p.description || '',
+      'Trạng thái': PROJECT_STATUS_LABELS[p.status] || p.status || '',
       'Số lượng thành viên': p.members?.length || 0,
       'Độ ưu tiên': p.priority === 'high' ? 'Cao' : p.priority === 'medium' ? 'Trung bình' : 'Thấp',
       'Ngày bắt đầu': p.startDate ? format(new Date(p.startDate), 'dd/MM/yyyy') : '',
       'Hạn chót': p.endDate ? format(new Date(p.endDate), 'dd/MM/yyyy') : '',
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Du_An');
-    XLSX.writeFile(workbook, 'Danh_sach_du_an.xlsx');
-    toast.success('Đã xuất file Excel');
+    exportToExcel(dataToExport, `Danh_sach_du_an_${format(new Date(), 'yyyyMMdd_HHmm')}`, 'Danh sách dự án');
+    toast.success('Đã xuất file Excel!');
   };
 
-  const handleExportPDF = () => {
-    if (projects.length === 0) return;
-    const doc = new jsPDF();
-    doc.text('Danh sach Du an', 14, 15);
-    
-    const tableColumn = ["Ten du an", "Trang thai", "Tien do", "Thanh vien", "Ngay bat dau", "Han chot"];
-    const tableRows = [];
+  const handleExportPDF = async () => {
+    if (projects.length === 0) {
+      toast.error('Không có dữ liệu dự án để xuất');
+      return;
+    }
 
-    projects.forEach(p => {
-      const projectData = [
-        removeAccents(p.name),
-        removeAccents(PROJECT_STATUS_LABELS[p.status] || ''),
-        `${p.progress || 0}%`,
-        p.members?.length || 0,
-        p.startDate ? format(new Date(p.startDate), 'dd/MM/yyyy') : '',
-        p.endDate ? format(new Date(p.endDate), 'dd/MM/yyyy') : ''
-      ];
-      tableRows.push(projectData);
-    });
+    const headers = ['Tên dự án', 'Trạng thái', 'Tiến độ', 'Thành viên', 'Ngày bắt đầu', 'Hạn chót'];
+    const rows = projects.map(p => [
+      p.name || '',
+      PROJECT_STATUS_LABELS[p.status] || p.status || '',
+      `${p.progress || 0}%`,
+      p.members?.length || 0,
+      p.startDate ? format(new Date(p.startDate), 'dd/MM/yyyy') : '-',
+      p.endDate ? format(new Date(p.endDate), 'dd/MM/yyyy') : '-'
+    ]);
 
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 20,
+    await exportToPdf({
+      title: 'DANH SÁCH DỰ ÁN',
+      headers,
+      rows,
+      fileName: `Danh_sach_du_an_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`,
+      orientation: 'landscape',
     });
-    doc.save('Danh_sach_du_an.pdf');
-    toast.success('Đã xuất file PDF');
+    toast.success('Đã xuất file PDF!');
   };
 
   return (

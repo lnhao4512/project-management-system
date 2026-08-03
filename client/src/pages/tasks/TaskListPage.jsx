@@ -9,9 +9,7 @@ import { tasksAPI } from '../../api';
 import TaskFormModal from '../../components/tasks/TaskFormModal';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import { exportToExcel, exportToPdf } from '../../utils/exportUtils';
 
 const STATUS_TABS = [
   { id: 'all', label: 'Tất cả' },
@@ -116,37 +114,34 @@ const TaskListPage = () => {
   const handleExportExcel = () => {
     try {
       const rows = buildExportRows();
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Danh sách công việc');
-      XLSX.writeFile(wb, `tasks_export_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+      if (rows.length === 0) {
+        toast.error('Không có dữ liệu công việc để xuất');
+        return;
+      }
+      exportToExcel(rows, `tasks_export_${format(new Date(), 'yyyyMMdd_HHmm')}`, 'Danh sách công việc');
       toast.success('Đã xuất file Excel!');
     } catch (e) {
       toast.error('Lỗi khi xuất Excel');
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
-      const doc = new jsPDF({ orientation: 'landscape' });
-      doc.setFontSize(14);
-      doc.text('Danh sách công việc', 14, 15);
-      doc.setFontSize(9);
-      doc.setTextColor(120);
-      doc.text(`Xuất lúc: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 22);
-
       const rows = buildExportRows();
-      autoTable(doc, {
-        startY: 27,
-        head: [Object.keys(rows[0] || {})],
-        body: rows.map(r => Object.values(r)),
-        styles: { fontSize: 8, cellPadding: 3 },
-        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 247, 250] },
-        margin: { left: 14, right: 14 },
-      });
+      if (rows.length === 0) {
+        toast.error('Không có dữ liệu công việc để xuất');
+        return;
+      }
+      const headers = Object.keys(rows[0] || {});
+      const rowValues = rows.map(r => Object.values(r));
 
-      doc.save(`tasks_export_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
+      await exportToPdf({
+        title: 'DANH SÁCH CÔNG VIỆC',
+        headers,
+        rows: rowValues,
+        fileName: `tasks_export_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`,
+        orientation: 'landscape',
+      });
       toast.success('Đã xuất file PDF!');
     } catch (e) {
       toast.error('Lỗi khi xuất PDF');
