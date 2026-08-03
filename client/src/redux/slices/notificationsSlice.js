@@ -9,14 +9,22 @@ const notificationsSlice = createSlice({
   },
   reducers: {
     setNotifications(state, action) {
-      state.items = action.payload;
+      state.items = action.payload || [];
     },
     addNotification(state, action) {
-      state.items.unshift(action.payload);
-      state.unreadCount += 1;
+      if (!action.payload || !action.payload._id) return;
+      const existsIndex = state.items.findIndex(n => n._id === action.payload._id);
+      if (existsIndex >= 0) {
+        state.items[existsIndex] = action.payload;
+      } else {
+        state.items.unshift(action.payload);
+        if (!action.payload.isRead) {
+          state.unreadCount += 1;
+        }
+      }
     },
     setUnreadCount(state, action) {
-      state.unreadCount = action.payload;
+      state.unreadCount = typeof action.payload === 'number' ? action.payload : 0;
     },
     markRead(state, action) {
       const notif = state.items.find(n => n._id === action.payload);

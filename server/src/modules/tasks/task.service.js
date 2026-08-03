@@ -325,6 +325,37 @@ class TaskService {
       description: `Task "${task.title}" status changed: ${task.status} → ${newStatus}`,
     });
 
+    // Notify task participants about status change
+    try {
+      const statusLabels = {
+        todo: 'Cần làm',
+        doing: 'Đang thực hiện',
+        review: 'Chờ duyệt',
+        done: 'Hoàn thành',
+      };
+      const recipients = new Set();
+      if (task.assignedTo) recipients.add(task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString());
+      if (task.createdBy) recipients.add(task.createdBy._id ? task.createdBy._id.toString() : task.createdBy.toString());
+      if (task.assignedBy) recipients.add(task.assignedBy._id ? task.assignedBy._id.toString() : task.assignedBy.toString());
+
+      recipients.delete(user._id.toString());
+
+      for (const recipientId of recipients) {
+        await notificationService.createNotification({
+          recipient: recipientId,
+          sender: user._id,
+          type: 'task_status_changed',
+          title: 'Trạng thái công việc thay đổi',
+          message: `${user.name} đã chuyển trạng thái công việc "${task.title}" sang "${statusLabels[newStatus] || newStatus}"`,
+          relatedTask: task._id,
+          relatedProject: task.project?._id || task.project,
+          link: `/tasks/${task._id}`,
+        });
+      }
+    } catch (notifErr) {
+      console.error('Error notifying status change:', notifErr);
+    }
+
     if (task.parentTask) {
       await this.recalculateParentProgress(task.parentTask);
     }

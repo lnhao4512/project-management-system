@@ -11,25 +11,52 @@ class NotificationService {
   async createNotification(data) {
     try {
       const notification = await Notification.create(data);
+      const populated = await Notification.findById(notification._id)
+        .populate('sender', 'name avatar role')
+        .populate('relatedTask', 'title status priority deadline')
+        .populate('relatedProject', 'name');
+
       // Emit realtime notification
       if (_io) {
-        emitToUser(_io, data.recipient, 'notification:new', notification);
+        emitToUser(_io, data.recipient, 'notification:new', populated || notification);
       }
-      return notification;
+      return populated || notification;
     } catch (error) {
       console.error('Notification creation error:', error.message);
     }
   }
 
-  async getUserNotifications(userId, page = 1, limit = 20) {
+  async getUserNotifications(userId, page = 1, limit = 20, options = {}) {
     const skip = (page - 1) * limit;
+    const filter = { recipient: userId };
+
+    if (options.type && options.type !== 'all') {
+      if (options.type === 'comment_mention') {
+        filter.type = { $in: ['task_commented', 'mention'] };
+      } else if (options.type === 'task_activity') {
+        filter.type = { $in: ['task_assigned', 'task_updated', 'task_status_changed'] };
+      } else if (options.type === 'deadline') {
+        filter.type = { $in: ['task_deadline_warning', 'task_overdue'] };
+      } else if (options.type === 'project') {
+        filter.type = { $in: ['project_member_added', 'project_updated'] };
+      } else {
+        filter.type = options.type;
+      }
+    }
+
+    if (options.isRead !== undefined && options.isRead !== null && options.isRead !== '') {
+      filter.isRead = options.isRead === 'true' || options.isRead === true;
+    }
+
     const [notifications, total, unreadCount] = await Promise.all([
-      Notification.find({ recipient: userId })
-        .populate('sender', 'name avatar')
+      Notification.find(filter)
+        .populate('sender', 'name avatar role')
+        .populate('relatedTask', 'title status priority deadline')
+        .populate('relatedProject', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Notification.countDocuments({ recipient: userId }),
+      Notification.countDocuments(filter),
       Notification.countDocuments({ recipient: userId, isRead: false }),
     ]);
     return { notifications, total, unreadCount };

@@ -11,6 +11,7 @@ const MentionInput = forwardRef(({
   rows = 1,
   disabled = false,
   autoFocus = false,
+  maxLength = 2000,
   onKeyDown,
 }, ref) => {
   const textareaRef = useRef(null);
@@ -218,6 +219,7 @@ const MentionInput = forwardRef(({
         rows={rows}
         disabled={disabled}
         autoFocus={autoFocus}
+        maxLength={maxLength}
         className={className}
       />
     </div>

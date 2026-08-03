@@ -110,6 +110,11 @@ const TaskDetailPage = () => {
     if (e && e.preventDefault) e.preventDefault();
     if (!newComment.trim() && attachments.length === 0) return;
 
+    if (newComment.length > 2000) {
+      toast.error('Nội dung bình luận không được vượt quá 2000 ký tự');
+      return;
+    }
+
     try {
       setSubmitting(true);
       let payload;
@@ -129,7 +134,8 @@ const TaskDetailPage = () => {
       setAttachments([]);
       toast.success('Đã thêm bình luận');
     } catch (error) {
-      toast.error('Lỗi khi thêm bình luận');
+      const errMsg = error.response?.data?.message || 'Lỗi khi thêm bình luận';
+      toast.error(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -149,6 +155,12 @@ const TaskDetailPage = () => {
 
   const handleSaveEdit = async (commentId) => {
     if (!editContent.trim()) return;
+
+    if (editContent.length > 2000) {
+      toast.error('Nội dung bình luận không được vượt quá 2000 ký tự');
+      return;
+    }
+
     try {
       setEditSubmitting(true);
       const res = await commentsAPI.update(id, commentId, {
@@ -161,7 +173,8 @@ const TaskDetailPage = () => {
       setEditCommentMentions([]);
       toast.success('Đã cập nhật bình luận');
     } catch (error) {
-      toast.error('Lỗi khi cập nhật bình luận');
+      const errMsg = error.response?.data?.message || 'Lỗi khi cập nhật bình luận';
+      toast.error(errMsg);
     } finally {
       setEditSubmitting(false);
     }
@@ -352,26 +365,32 @@ const TaskDetailPage = () => {
                               users={availableUsers}
                               className="input min-h-[80px] resize-y text-sm py-2"
                               autoFocus
+                              maxLength={2000}
                               onSubmit={() => handleSaveEdit(comment._id)}
                               onKeyDown={e => {
                                 if (e.key === 'Escape') handleCancelEdit();
                               }}
                             />
-                            <div className="flex items-center gap-2 justify-end">
-                              <button
-                                onClick={handleCancelEdit}
-                                className="flex items-center gap-1 text-xs text-dark-400 hover:text-dark-200 transition-colors px-2 py-1 rounded hover:bg-dark-700"
-                              >
-                                <X size={12} /> Hủy
-                              </button>
-                              <button
-                                onClick={() => handleSaveEdit(comment._id)}
-                                disabled={editSubmitting || !editContent.trim()}
-                                className="flex items-center gap-1 text-xs text-white bg-primary-600 hover:bg-primary-500 disabled:opacity-50 px-3 py-1 rounded transition-colors"
-                              >
-                                {editSubmitting ? <Loader size={12} className="animate-spin" /> : <Check size={12} />}
-                                Lưu
-                              </button>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[11px] font-medium ${editContent.length >= 2000 ? 'text-danger-400 font-semibold' : editContent.length >= 1800 ? 'text-warning-400' : 'text-dark-500'}`}>
+                                {editContent.length}/2000 ký tự
+                              </span>
+                              <div className="flex items-center gap-2 justify-end">
+                                <button
+                                  onClick={handleCancelEdit}
+                                  className="flex items-center gap-1 text-xs text-dark-400 hover:text-dark-200 transition-colors px-2 py-1 rounded hover:bg-dark-700"
+                                >
+                                  <X size={12} /> Hủy
+                                </button>
+                                <button
+                                  onClick={() => handleSaveEdit(comment._id)}
+                                  disabled={editSubmitting || !editContent.trim() || editContent.length > 2000}
+                                  className="flex items-center gap-1 text-xs text-white bg-primary-600 hover:bg-primary-500 disabled:opacity-50 px-3 py-1 rounded transition-colors"
+                                >
+                                  {editSubmitting ? <Loader size={12} className="animate-spin" /> : <Check size={12} />}
+                                  Lưu
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ) : (
@@ -457,7 +476,8 @@ const TaskDetailPage = () => {
                       setNewCommentMentions(mentions);
                     }}
                     users={availableUsers}
-                    placeholder="Viết bình luận (@tag thành viên, Ctrl+Enter gửi)..."
+                    maxLength={2000}
+                    placeholder="Viết bình luận (@tag thành viên, tối đa 2000 ký tự, Ctrl+Enter gửi)..."
                     className="input min-h-[44px] py-3 pr-28 resize-y"
                     rows={1}
                     onSubmit={handleAddComment}
@@ -482,13 +502,20 @@ const TaskDetailPage = () => {
                     </label>
                     <button
                       type="submit"
-                      disabled={submitting || (!newComment.trim() && attachments.length === 0)}
+                      disabled={submitting || (!newComment.trim() && attachments.length === 0) || newComment.length > 2000}
                       className="p-2 text-primary-500 hover:bg-primary-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {submitting ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
                     </button>
                   </div>
                 </form>
+                {newComment.length > 0 && (
+                  <div className="flex justify-end mt-1 px-1">
+                    <span className={`text-[11px] font-medium ${newComment.length >= 2000 ? 'text-danger-400 font-semibold' : newComment.length >= 1800 ? 'text-warning-400' : 'text-dark-500'}`}>
+                      {newComment.length}/2000 ký tự
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

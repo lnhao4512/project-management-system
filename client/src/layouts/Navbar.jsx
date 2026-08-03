@@ -3,10 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Bell, Menu, Search, X, Sun, Moon, Eye,
-  CheckSquare, FolderOpen, Users, Loader
+  CheckSquare, FolderOpen, Users, Loader, MessageSquare, AtSign, Clock, AlertTriangle, CheckCheck
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
 import { useAuth } from '../hooks/useAuth';
-import { markAllRead, setNotifications, setUnreadCount } from '../redux/slices/notificationsSlice';
+import { markRead, markAllRead, setNotifications, setUnreadCount } from '../redux/slices/notificationsSlice';
 import { notificationsAPI, searchAPI } from '../api';
 
 const statusColors = { todo: 'text-dark-400', doing: 'text-indigo-500', review: 'text-purple-500', done: 'text-emerald-500' };
@@ -202,32 +204,67 @@ const Navbar = ({ onMenuToggle }) => {
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 top-full mt-2 w-80 rounded-xl overflow-hidden z-50 glass shadow-2xl animate-slide-down">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-dark-700/50">
-                <span className="text-sm font-semibold text-dark-100">Thông báo</span>
+            <div className="absolute right-0 top-full mt-2 w-84 sm:w-96 rounded-2xl overflow-hidden z-50 glass shadow-2xl animate-slide-down border border-dark-700/80">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-dark-700/50 bg-dark-800/40">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-dark-100">Thông báo</span>
+                  {unreadCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary-500/20 text-primary-300 border border-primary-500/30">
+                      {unreadCount} mới
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   {unreadCount > 0 && (
-                    <button onClick={handleMarkAllRead} className="text-xs text-indigo-500 hover:text-indigo-400 font-medium">Đọc tất cả</button>
+                    <button onClick={handleMarkAllRead} className="text-xs text-primary-400 hover:text-primary-300 font-medium">
+                      Đọc tất cả
+                    </button>
                   )}
-                  <button onClick={() => setShowNotifs(false)} className="text-dark-400 hover:text-dark-200 transition-colors"><X size={14} /></button>
+                  <button onClick={() => setShowNotifs(false)} className="text-dark-400 hover:text-dark-200 transition-colors p-1">
+                    <X size={14} />
+                  </button>
                 </div>
               </div>
-              <div className="max-h-64 overflow-y-auto custom-scrollbar">
-                {notifications.length === 0
-                  ? <p className="py-8 text-center text-dark-400 text-sm">Không có thông báo mới</p>
-                  : notifications.slice(0, 10).map(n => (
-                    <div key={n._id} onClick={() => { setShowNotifs(false); if (n.link) navigate(n.link); }}
-                      className={`px-4 py-3 cursor-pointer transition-colors hover:bg-dark-800/50 ${!n.isRead ? 'border-l-2 border-l-indigo-500 bg-indigo-500/5' : ''}`}
+              <div className="max-h-80 overflow-y-auto custom-scrollbar divide-y divide-dark-800/60">
+                {notifications.length === 0 ? (
+                  <p className="py-8 text-center text-dark-400 text-sm">Không có thông báo mới</p>
+                ) : (
+                  notifications.slice(0, 10).map(n => (
+                    <div
+                      key={n._id}
+                      onClick={async () => {
+                        setShowNotifs(false);
+                        if (!n.isRead) {
+                          try {
+                            await notificationsAPI.markAsRead(n._id);
+                            dispatch(markRead(n._id));
+                          } catch {}
+                        }
+                        if (n.link) navigate(n.link);
+                      }}
+                      className={`px-4 py-3 cursor-pointer transition-colors hover:bg-dark-800/60 ${
+                        !n.isRead ? 'border-l-2 border-l-primary-500 bg-primary-950/20' : ''
+                      }`}
                     >
-                      <p className="text-sm text-dark-100 font-medium">{n.title}</p>
-                      <p className="text-xs text-dark-400 mt-0.5 line-clamp-2">{n.message}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={`text-xs font-semibold truncate ${!n.isRead ? 'text-primary-300' : 'text-dark-200'}`}>
+                          {n.title}
+                        </p>
+                        <span className="text-[10px] text-dark-500 flex-shrink-0">
+                          {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: vi })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-dark-400 mt-1 line-clamp-2 leading-relaxed">{n.message}</p>
                     </div>
                   ))
-                }
+                )}
               </div>
-              <div className="px-4 py-2.5 border-t border-dark-700/50">
-                <button onClick={() => { setShowNotifs(false); navigate('/notifications'); }} className="text-xs font-semibold text-indigo-500 hover:text-indigo-400 w-full text-center">
-                  Xem tất cả
+              <div className="px-4 py-2.5 border-t border-dark-700/50 bg-dark-800/40">
+                <button
+                  onClick={() => { setShowNotifs(false); navigate('/notifications'); }}
+                  className="text-xs font-semibold text-primary-400 hover:text-primary-300 w-full text-center"
+                >
+                  Xem tất cả thông báo ({notifications.length})
                 </button>
               </div>
             </div>

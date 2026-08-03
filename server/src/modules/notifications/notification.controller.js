@@ -6,7 +6,8 @@ class NotificationController {
   async getNotifications(req, res, next) {
     try {
       const { page, limit } = parsePagination(req.query);
-      const result = await notificationService.getUserNotifications(req.user._id, page, limit);
+      const { type, isRead } = req.query;
+      const result = await notificationService.getUserNotifications(req.user._id, page, limit, { type, isRead });
       return ApiResponse.paginated(
         res,
         result.notifications,

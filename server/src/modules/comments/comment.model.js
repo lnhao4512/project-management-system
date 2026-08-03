@@ -4,9 +4,9 @@ const commentSchema = new mongoose.Schema(
   {
     content: {
       type: String,
-      required: [true, 'Comment content is required'],
+      required: [true, 'Nội dung bình luận không được để trống'],
       trim: true,
-      maxlength: [2000, 'Comment cannot exceed 2000 characters'],
+      maxlength: [2000, 'Nội dung bình luận không được vượt quá 2000 ký tự'],
     },
     task: {
       type: mongoose.Schema.Types.ObjectId,
