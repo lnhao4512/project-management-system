@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { tasksAPI, commentsAPI } from '../../api';
+import { tasksAPI, commentsAPI, usersAPI } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
-import { ArrowLeft, Send, User, Clock, Loader, Paperclip, Edit2, Check, X, Plus, Layers } from 'lucide-react';
+import { ArrowLeft, Send, User, Clock, Loader, Paperclip, Edit2, Check, X, Plus, Layers, AtSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow, format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../../constants';
 import { useSocket } from '../../hooks/useSocket';
 import TaskFormModal from '../../components/tasks/TaskFormModal';
+import MentionInput from '../../components/common/MentionInput';
 
 const TaskDetailPage = () => {
   const { id } = useParams();
@@ -20,29 +21,50 @@ const TaskDetailPage = () => {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
+  const [newCommentMentions, setNewCommentMentions] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // Edit comment state
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editContent, setEditContent] = useState('');
+  const [editCommentMentions, setEditCommentMentions] = useState([]);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
+  const commentInputRef = useRef(null);
   const { socket, joinTask, leaveTask } = useSocket();
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
       try {
         setLoading(true);
-        const [taskRes, commentsRes, subTasksRes] = await Promise.all([
+        const [taskRes, commentsRes, subTasksRes, usersRes] = await Promise.allSettled([
           tasksAPI.getById(id),
           commentsAPI.getByTask(id),
           tasksAPI.getAll({ parentTask: id, limit: 100 }),
+          usersAPI.getAll({ limit: 100 }),
         ]);
-        setTask(taskRes.data.data);
-        setComments(commentsRes.data.data);
-        setSubTasks(subTasksRes.data.data || []);
+
+        if (taskRes.status === 'fulfilled') {
+          setTask(taskRes.value.data.data);
+        } else {
+          toast.error('Không thể tải thông tin công việc');
+          navigate('/my-tasks');
+          return;
+        }
+
+        if (commentsRes.status === 'fulfilled') {
+          setComments(commentsRes.value.data.data);
+        }
+        if (subTasksRes.status === 'fulfilled') {
+          setSubTasks(subTasksRes.value.data.data || []);
+        }
+        if (usersRes.status === 'fulfilled') {
+          const userList = usersRes.value.data?.data?.users || usersRes.value.data?.data || [];
+          setAvailableUsers(userList);
+        }
       } catch (error) {
         toast.error('Không thể tải thông tin công việc');
         navigate('/my-tasks');
@@ -82,10 +104,10 @@ const TaskDetailPage = () => {
         socket.off('comment:deleted', handleDeleteCommentEvent);
       };
     }
-  }, [id, navigate, socket]); // Note: joinTask, leaveTask are stable, but could be dependencies if needed.
+  }, [id, navigate, socket]);
 
   const handleAddComment = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!newComment.trim() && attachments.length === 0) return;
 
     try {
@@ -94,14 +116,16 @@ const TaskDetailPage = () => {
       if (attachments.length > 0) {
         payload = new FormData();
         payload.append('content', newComment.trim() ? newComment : 'Đã đính kèm tệp');
+        payload.append('mentions', JSON.stringify(newCommentMentions));
         attachments.forEach(file => payload.append('attachments', file));
       } else {
-        payload = { content: newComment };
+        payload = { content: newComment, mentions: newCommentMentions };
       }
 
       const res = await commentsAPI.create(id, payload);
       setComments([...comments, res.data.data]);
       setNewComment('');
+      setNewCommentMentions([]);
       setAttachments([]);
       toast.success('Đã thêm bình luận');
     } catch (error) {
@@ -114,27 +138,75 @@ const TaskDetailPage = () => {
   const handleStartEdit = (comment) => {
     setEditingCommentId(comment._id);
     setEditContent(comment.content);
+    setEditCommentMentions((comment.mentions || []).map(m => m._id || m));
   };
 
   const handleCancelEdit = () => {
     setEditingCommentId(null);
     setEditContent('');
+    setEditCommentMentions([]);
   };
 
   const handleSaveEdit = async (commentId) => {
     if (!editContent.trim()) return;
     try {
       setEditSubmitting(true);
-      const res = await commentsAPI.update(id, commentId, { content: editContent.trim() });
-      setComments(comments.map(c => c._id === commentId ? { ...c, content: editContent.trim(), updatedAt: new Date() } : c));
+      const res = await commentsAPI.update(id, commentId, {
+        content: editContent.trim(),
+        mentions: editCommentMentions,
+      });
+      setComments(comments.map(c => c._id === commentId ? (res.data?.data || { ...c, content: editContent.trim(), mentions: editCommentMentions, updatedAt: new Date() }) : c));
       setEditingCommentId(null);
       setEditContent('');
+      setEditCommentMentions([]);
       toast.success('Đã cập nhật bình luận');
     } catch (error) {
       toast.error('Lỗi khi cập nhật bình luận');
     } finally {
       setEditSubmitting(false);
     }
+  };
+
+  const handleTriggerMention = () => {
+    if (commentInputRef.current) {
+      commentInputRef.current.focus();
+      const currentVal = newComment;
+      const newVal = currentVal ? (currentVal.endsWith(' ') ? `${currentVal}@` : `${currentVal} @`) : '@';
+      setNewComment(newVal);
+      // Dispatch input event to trigger mention popup
+      setTimeout(() => {
+        if (commentInputRef.current) {
+          commentInputRef.current.focus();
+          const pos = newVal.length;
+          commentInputRef.current.setSelectionRange(pos, pos);
+          // trigger keyup to fire mention detection
+          commentInputRef.current.dispatchEvent(new Event('keyup', { bubbles: true }));
+        }
+      }, 10);
+    }
+  };
+
+  const renderCommentContent = (content, mentions = []) => {
+    if (!content) return null;
+    const parts = content.split(/(@[a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF_.-]+(?:\s+[a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF_.-]+)*)/gu);
+
+    return (
+      <p className="text-dark-300 whitespace-pre-wrap text-sm leading-relaxed">
+        {parts.map((part, idx) => {
+          if (part && part.startsWith('@') && part.length > 1) {
+            return (
+              <span
+                key={idx}
+                className="inline-flex items-center font-medium text-primary-400 bg-primary-500/15 border border-primary-500/30 px-1.5 py-0.5 rounded-md mx-0.5 text-xs shadow-sm hover:bg-primary-500/25 transition-colors cursor-pointer"
+              >
+                {part}
+              </span>
+            );
+          }
+          return part;
+        })}
+      </p>
+    );
   };
 
   const handleDeleteComment = async (commentId) => {
@@ -271,13 +343,17 @@ const TaskDetailPage = () => {
                         ) : editingCommentId === comment._id ? (
                           /* Edit Mode */
                           <div className="space-y-2">
-                            <textarea
+                            <MentionInput
                               value={editContent}
-                              onChange={e => setEditContent(e.target.value)}
-                              className="input min-h-[80px] resize-y text-sm"
+                              onChange={(text, mentions) => {
+                                setEditContent(text);
+                                setEditCommentMentions(mentions);
+                              }}
+                              users={availableUsers}
+                              className="input min-h-[80px] resize-y text-sm py-2"
                               autoFocus
+                              onSubmit={() => handleSaveEdit(comment._id)}
                               onKeyDown={e => {
-                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSaveEdit(comment._id);
                                 if (e.key === 'Escape') handleCancelEdit();
                               }}
                             />
@@ -300,7 +376,7 @@ const TaskDetailPage = () => {
                           </div>
                         ) : (
                           <>
-                            <p className="text-dark-300 whitespace-pre-wrap text-sm">{comment.content}</p>
+                            {renderCommentContent(comment.content, comment.mentions)}
                             {comment.attachments && comment.attachments.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {comment.attachments.map((url, i) => {
@@ -373,19 +449,28 @@ const TaskDetailPage = () => {
                   </div>
                 )}
                 <form onSubmit={handleAddComment} className="relative">
-                  <textarea
+                  <MentionInput
+                    ref={commentInputRef}
                     value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Viết bình luận hoặc tải file... (Ctrl+Enter để gửi)"
-                    className="input min-h-[44px] py-3 pr-20 resize-y"
-                    rows="1"
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                        handleAddComment(e);
-                      }
+                    onChange={(text, mentions) => {
+                      setNewComment(text);
+                      setNewCommentMentions(mentions);
                     }}
+                    users={availableUsers}
+                    placeholder="Viết bình luận (@tag thành viên, Ctrl+Enter gửi)..."
+                    className="input min-h-[44px] py-3 pr-28 resize-y"
+                    rows={1}
+                    onSubmit={handleAddComment}
                   />
-                  <div className="absolute right-2 top-2 flex items-center gap-1">
+                  <div className="absolute right-2 top-2 flex items-center gap-1 z-10">
+                    <button
+                      type="button"
+                      onClick={handleTriggerMention}
+                      className="p-2 text-dark-400 hover:bg-dark-700/50 hover:text-primary-400 rounded-lg cursor-pointer transition-colors"
+                      title="Nhắc đến thành viên (@tag)"
+                    >
+                      <AtSign size={16} />
+                    </button>
                     <label className="p-2 text-dark-400 hover:bg-dark-700/50 hover:text-dark-200 rounded-lg cursor-pointer transition-colors" title="Đính kèm file">
                       <input
                         type="file"

@@ -33,7 +33,8 @@ class CommentController {
       const comment = await commentService.updateComment(
         req.params.id,
         req.body.content,
-        req.user._id
+        req.user._id,
+        req.body.mentions
       );
       if (req.io) {
         req.io.to(`task:${req.params.taskId}`).emit('comment:updated', comment);

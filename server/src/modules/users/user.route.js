@@ -15,8 +15,8 @@ router.get('/profile', userController.getProfile);
 router.put('/profile', validate(updateUserSchema), userController.updateProfile);
 router.put('/profile/avatar', upload.single('avatar'), userController.updateAvatar);
 
-// Admin/PM routes
-router.get('/', isAdminOrPM, validate(listUsersSchema), userController.getAllUsers);
+// User listing (for mentions, assignment, and management)
+router.get('/', validate(listUsersSchema), userController.getAllUsers);
 router.get('/:id', isAdminOrPM, userController.getUserById);
 router.post('/', isAdminOrPM, validate(createUserSchema), userController.createUser);
 router.put('/:id', isAdminOrPM, validate(updateUserSchema), userController.updateUser);
