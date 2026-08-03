@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Plus, Search, Filter, FolderOpen, Users, Calendar, MoreVertical, Trash2, Pencil, Download, FileText } from 'lucide-react';
+import { Plus, Search, Filter, FolderOpen, Users, Calendar, MoreVertical, Trash2, Pencil, Download, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchProjects, deleteProject } from '../../redux/slices/projectsSlice';
 import { useAuth } from '../../hooks/useAuth';
 import { PROJECT_STATUS_LABELS, PRIORITY_LABELS } from '../../constants';
@@ -35,14 +35,39 @@ const ProjectsPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [sortOption, setSortOption] = useState('-createdAt');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(9);
   const [showModal, setShowModal] = useState(false);
   const [editProject, setEditProject] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchProjects({ search, status: statusFilter || undefined, priority: priorityFilter || undefined, sort: sortOption }));
-  }, [dispatch, search, statusFilter, priorityFilter, sortOption]);
+    dispatch(fetchProjects({
+      page,
+      limit,
+      search: search.trim() || undefined,
+      status: statusFilter || undefined,
+      priority: priorityFilter || undefined,
+      sort: sortOption
+    }));
+  }, [dispatch, page, limit, search, statusFilter, priorityFilter, sortOption]);
+
+  const getPageNumbers = (totalPages, currentPage) => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   const handleDelete = async (id, name) => {
     if (!confirm(`Xóa dự án "${name}"? Thao tác này không thể hoàn tác.`)) return;
@@ -141,52 +166,55 @@ const ProjectsPage = () => {
         )}
       </div>
 
-      {/* Search Bar */}
-      <div className="relative w-full">
-        <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-dark-400" />
-        <input
-          type="text"
-          placeholder="Tìm kiếm dự án..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full bg-dark-900/50 text-dark-100 placeholder:text-dark-400 border border-dark-700/50 rounded-full py-3 pl-12 pr-6 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
-        />
-      </div>
+      {/* Search & Filters */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        {/* Search Bar */}
+        <div className="relative flex-1 min-w-[240px]">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-dark-400" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm dự án..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full bg-dark-900/50 text-dark-100 placeholder:text-dark-400 border border-dark-700/50 rounded-xl py-2.5 pl-11 pr-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all text-sm"
+          />
+        </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          className="input w-full sm:w-auto min-w-[160px]"
-        >
-          <option value="">Tất cả trạng thái</option>
-          {Object.entries(PROJECT_STATUS_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
-          ))}
-        </select>
-        
-        <select
-          value={priorityFilter}
-          onChange={e => setPriorityFilter(e.target.value)}
-          className="input w-full sm:w-auto min-w-[150px]"
-        >
-          <option value="">Tất cả ưu tiên</option>
-          {Object.entries(PRIORITY_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
-          ))}
-        </select>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <select
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+            className="input text-sm py-2 px-3 min-w-[150px] bg-dark-900/50"
+          >
+            <option value="">Tất cả trạng thái</option>
+            {Object.entries(PROJECT_STATUS_LABELS).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+          
+          <select
+            value={priorityFilter}
+            onChange={e => { setPriorityFilter(e.target.value); setPage(1); }}
+            className="input text-sm py-2 px-3 min-w-[140px] bg-dark-900/50"
+          >
+            <option value="">Tất cả ưu tiên</option>
+            {Object.entries(PRIORITY_LABELS).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
 
-        <select
-          value={sortOption}
-          onChange={e => setSortOption(e.target.value)}
-          className="input w-full sm:w-auto min-w-[170px]"
-        >
-          <option value="-createdAt">Mới nhất</option>
-          <option value="createdAt">Cũ nhất</option>
-          <option value="-priority">Ưu tiên cao nhất</option>
-          <option value="priority">Ưu tiên thấp nhất</option>
-        </select>
+          <select
+            value={sortOption}
+            onChange={e => { setSortOption(e.target.value); setPage(1); }}
+            className="input text-sm py-2 px-3 min-w-[150px] bg-dark-900/50"
+          >
+            <option value="-createdAt">Mới nhất</option>
+            <option value="createdAt">Cũ nhất</option>
+            <option value="-priority">Ưu tiên cao nhất</option>
+            <option value="priority">Ưu tiên thấp nhất</option>
+          </select>
+        </div>
       </div>
 
       {/* Projects Grid */}
@@ -311,6 +339,80 @@ const ProjectsPage = () => {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && projects.length > 0 && pagination && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-dark-700/50">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-dark-400">
+            <span>
+              Hiển thị <span className="font-semibold text-dark-200">{(pagination.page - 1) * pagination.limit + 1}</span> - <span className="font-semibold text-dark-200">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> trong tổng số <span className="font-semibold text-dark-200">{pagination.total}</span> dự án
+            </span>
+            <div className="flex items-center gap-1.5 ml-2">
+              <span className="text-xs text-dark-500">| Số lượng:</span>
+              <select
+                value={limit}
+                onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                className="bg-dark-800 border border-dark-700 text-dark-200 text-xs rounded-lg py-1 px-2 focus:outline-none focus:border-primary-500 cursor-pointer"
+              >
+                <option value={6}>6</option>
+                <option value={9}>9</option>
+                <option value={12}>12</option>
+                <option value={18}>18</option>
+                <option value={24}>24</option>
+              </select>
+              <span className="text-xs text-dark-500">/ trang</span>
+            </div>
+          </div>
+
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                disabled={!pagination.hasPrevPage}
+                onClick={() => setPage(p => Math.max(p - 1, 1))}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium border border-dark-700 bg-dark-800/80 text-dark-300 hover:text-dark-100 hover:bg-dark-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={16} />
+                <span className="hidden sm:inline">Trước</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers(pagination.totalPages, page).map((p, idx) => {
+                  if (p === '...') {
+                    return (
+                      <span key={`dots-${idx}`} className="w-8 h-8 flex items-center justify-center text-dark-500 text-sm">
+                        ...
+                      </span>
+                    );
+                  }
+                  const isCurrent = p === page;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-8 h-8 rounded-lg text-sm font-semibold flex items-center justify-center transition-all ${
+                        isCurrent
+                          ? 'bg-primary-600 text-white shadow-md shadow-primary-600/30'
+                          : 'border border-dark-700 bg-dark-800/60 text-dark-300 hover:bg-dark-700 hover:text-dark-100'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                disabled={!pagination.hasNextPage}
+                onClick={() => setPage(p => Math.min(p + 1, pagination.totalPages))}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium border border-dark-700 bg-dark-800/80 text-dark-300 hover:text-dark-100 hover:bg-dark-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <span className="hidden sm:inline">Sau</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
