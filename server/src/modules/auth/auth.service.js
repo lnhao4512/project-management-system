@@ -10,7 +10,8 @@ class AuthService {
    * Đăng nhập hệ thống
    */
   async login(email, password) {
-    const user = await User.findOne({ email }).select('+password');
+    const normalizedEmail = email?.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
     if (!user) {
       throw new AppError('Email hoặc mật khẩu không chính xác', 401);
     }
@@ -84,7 +85,8 @@ class AuthService {
    * Quên mật khẩu - Gửi mã OTP 6 số
    */
   async forgotPassword(email) {
-    const user = await User.findOne({ email });
+    const normalizedEmail = email?.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       throw new AppError('Email không tồn tại trong hệ thống', 404);
     }
@@ -106,9 +108,10 @@ class AuthService {
    * Xác minh OTP
    */
   async verifyOTP(email, otp) {
+    const normalizedEmail = email?.trim().toLowerCase();
     const user = await User.findOne({
-      email,
-      resetPasswordToken: otp,
+      email: normalizedEmail,
+      resetPasswordToken: otp?.trim(),
       resetPasswordExpire: { $gt: Date.now() },
     });
 
@@ -123,9 +126,10 @@ class AuthService {
    * Đặt lại mật khẩu bằng OTP
    */
   async resetPassword(email, otp, newPassword) {
+    const normalizedEmail = email?.trim().toLowerCase();
     const user = await User.findOne({
-      email,
-      resetPasswordToken: otp,
+      email: normalizedEmail,
+      resetPasswordToken: otp?.trim(),
       resetPasswordExpire: { $gt: Date.now() },
     }).select('+password');
 

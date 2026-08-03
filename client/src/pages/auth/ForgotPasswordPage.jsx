@@ -18,15 +18,20 @@ const ForgotPasswordPage = () => {
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
-    if (!email) return toast.error('Vui lòng nhập email');
+    setPwdError('');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return toast.error('Vui lòng nhập email');
     
     try {
       setLoading(true);
-      await authAPI.forgotPassword({ email });
+      await authAPI.forgotPassword({ email: cleanEmail });
+      setEmail(cleanEmail);
       setStep(1);
       toast.success('Mã OTP đã được gửi đến email của bạn');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Lỗi khi gửi yêu cầu');
+      const msg = error.response?.data?.message || 'Lỗi khi gửi yêu cầu';
+      setPwdError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -221,6 +226,13 @@ const ForgotPasswordPage = () => {
             </form>
           ) : (
             <form onSubmit={handleSendOTP} className="space-y-5 animate-fade-in">
+              {pwdError && (
+                <div className="p-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 text-sm flex items-start gap-3 animate-fade-in shadow-sm">
+                  <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
+                  <span className="font-medium leading-relaxed">{pwdError}</span>
+                </div>
+              )}
+
               {/* Email */}
               <div>
                 <label className="label">Địa chỉ Email</label>
@@ -229,9 +241,9 @@ const ForgotPasswordPage = () => {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); setPwdError(''); }}
                     placeholder="ban@congty.com"
-                    className="input"
+                    className={`input ${pwdError ? 'border-danger-500/50 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
                     style={{ paddingLeft: '2.25rem' }}
                     required
                   />
