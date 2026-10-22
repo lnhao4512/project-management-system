@@ -48,17 +48,30 @@ class EmailService {
    */
   async send({ to, subject, html }) {
     if (process.env.GMAIL_SCRIPT_URL) {
-      const res = await fetch(process.env.GMAIL_SCRIPT_URL, {
+      // Apps Script chạy doPost xong rồi trả 302 sang URL chứa kết quả; tự đi theo bằng GET
+      // vì fetch tự redirect thì Google trả 404 dù mail đã được gửi.
+      let res = await fetch(process.env.GMAIL_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ secret: process.env.GMAIL_SCRIPT_SECRET, to, subject, html }),
-        signal: AbortSignal.timeout(15000),
+        redirect: 'manual',
+        signal: AbortSignal.timeout(30000),
       });
+      const executed = res.status >= 300 && res.status < 400 && res.headers.get('location');
+      if (executed) {
+        res = await fetch(res.headers.get('location'), { signal: AbortSignal.timeout(15000) });
+      }
+
       const text = await res.text();
       let result;
       try {
         result = JSON.parse(text);
       } catch {
+        if (executed) {
+          // doPost đã chạy nhưng không đọc được kết quả: coi như đã gửi
+          console.warn(`Gmail relay: không đọc được kết quả (${res.status}), giả định mail đã gửi`);
+          return;
+        }
         throw new Error(`Gmail relay ${res.status}: phản hồi không hợp lệ ${text.slice(0, 200)}`);
       }
       if (!result.ok) {
