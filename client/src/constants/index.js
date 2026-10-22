@@ -1,5 +1,6 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
+export const SERVER_URL = import.meta.env.VITE_SERVER_URL || SOCKET_URL;
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'Quản Lý Công Việc';
 
 export const ROLES = {

@@ -23,6 +23,9 @@ const aiRoutes = require('./modules/ai/ai.route');
 
 const app = express();
 
+// Behind a reverse proxy (Render, nginx) so rate limiting sees the real client IP
+app.set('trust proxy', 1);
+
 // ─── Security Middleware ──────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },

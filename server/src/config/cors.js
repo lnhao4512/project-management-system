@@ -1,15 +1,30 @@
+// CLIENT_URL may hold several comma-separated origins (e.g. the Vercel domain + a custom domain)
+const clientUrls = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((url) => url.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
 const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:5173',
+  ...clientUrls,
   'http://localhost:3000',
+  'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174',
+  'http://localhost',
+  'http://127.0.0.1',
 ];
+
+const isAllowedOrigin = (origin) =>
+  !origin ||
+  allowedOrigins.includes(origin) ||
+  origin.includes('pinggy-free.link') ||
+  origin.includes('loca.lt');
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

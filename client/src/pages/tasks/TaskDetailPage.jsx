@@ -6,7 +6,7 @@ import { ArrowLeft, Send, User, Clock, Loader, Paperclip, Edit2, Check, X, Plus,
 import toast from 'react-hot-toast';
 import { formatDistanceToNow, format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { STATUS_LABELS, PRIORITY_LABELS } from '../../constants';
+import { STATUS_LABELS, PRIORITY_LABELS, SERVER_URL } from '../../constants';
 import { useSocket } from '../../hooks/useSocket';
 import TaskFormModal from '../../components/tasks/TaskFormModal';
 import MentionInput from '../../components/common/MentionInput';
@@ -403,7 +403,7 @@ const TaskDetailPage = () => {
                                   return (
                                     <a
                                       key={i}
-                                      href={`http://localhost:5000${url}`}
+                                      href={`${SERVER_URL}${url}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="flex items-center gap-1 text-xs bg-dark-900/50 hover:bg-dark-900 px-2 py-1.5 rounded-md text-primary-400 border border-dark-700 transition-colors"
