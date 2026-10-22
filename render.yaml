@@ -21,9 +21,9 @@ services:
         value: 30d
       - key: CLIENT_URL
         sync: false
-      - key: BREVO_API_KEY
+      - key: GMAIL_SCRIPT_URL
         sync: false
-      - key: EMAIL_FROM
+      - key: GMAIL_SCRIPT_SECRET
         sync: false
       - key: SMTP_HOST
         value: smtp.gmail.com

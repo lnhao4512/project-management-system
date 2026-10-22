@@ -31,14 +31,10 @@ class EmailService {
     }
   }
 
-  // Có cấu hình gửi mail thật hay chưa (Brevo API hoặc SMTP)
+  // Có cấu hình gửi mail thật hay chưa (Gmail Apps Script relay hoặc SMTP)
   isConfigured() {
-    if (process.env.BREVO_API_KEY) return true;
+    if (process.env.GMAIL_SCRIPT_URL) return true;
     return !!process.env.SMTP_USER && process.env.SMTP_USER !== 'your_email@gmail.com';
-  }
-
-  get fromAddress() {
-    return process.env.EMAIL_FROM || process.env.SMTP_USER;
   }
 
   get clientUrl() {
@@ -46,34 +42,33 @@ class EmailService {
   }
 
   /**
-   * Gửi mail: ưu tiên Brevo HTTP API (cổng 443) vì Render free chặn cổng SMTP,
-   * không có BREVO_API_KEY thì dùng SMTP qua nodemailer (môi trường local).
+   * Gửi mail: ưu tiên Google Apps Script relay (HTTPS, cổng 443) vì Render free chặn cổng SMTP,
+   * không có GMAIL_SCRIPT_URL thì dùng SMTP qua nodemailer (môi trường local).
+   * Mã script: server/scripts/gmail-relay.gs
    */
   async send({ to, subject, html }) {
-    if (process.env.BREVO_API_KEY) {
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    if (process.env.GMAIL_SCRIPT_URL) {
+      const res = await fetch(process.env.GMAIL_SCRIPT_URL, {
         method: 'POST',
-        headers: {
-          'api-key': process.env.BREVO_API_KEY,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          sender: { name: 'Task Management System', email: this.fromAddress },
-          to: [{ email: to }],
-          subject,
-          htmlContent: html,
-        }),
-        signal: AbortSignal.timeout(10000),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: process.env.GMAIL_SCRIPT_SECRET, to, subject, html }),
+        signal: AbortSignal.timeout(15000),
       });
-      if (!res.ok) {
-        throw new Error(`Brevo API ${res.status}: ${await res.text()}`);
+      const text = await res.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error(`Gmail relay ${res.status}: phản hồi không hợp lệ ${text.slice(0, 200)}`);
+      }
+      if (!result.ok) {
+        throw new Error(`Gmail relay: ${result.error || 'gửi thất bại'}`);
       }
       return;
     }
 
     await this.transporter.sendMail({
-      from: `"Task Management System" <${this.fromAddress}>`,
+      from: `"Task Management System" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,
