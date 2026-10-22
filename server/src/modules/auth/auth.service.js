@@ -98,10 +98,17 @@ class AuthService {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 phút
     await user.save({ validateBeforeSave: false });
 
-    // Gửi OTP qua email
+    // Gửi OTP qua email — tuyệt đối không trả OTP về client
     const emailSent = await emailService.sendOTP(user.email, otp);
 
-    return { emailSent, otp: !emailSent ? otp : undefined };
+    if (!emailSent && emailService.isConfigured()) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+      throw new AppError('Không thể gửi email lúc này, vui lòng thử lại sau', 503);
+    }
+
+    return { emailSent };
   }
 
   /**

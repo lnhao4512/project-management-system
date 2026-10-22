@@ -69,10 +69,7 @@ class AuthController {
     try {
       const { email } = req.body;
       const result = await authService.forgotPassword(email);
-      const message = result.emailSent
-        ? 'Mã OTP đã được gửi đến email của bạn'
-        : 'Mã OTP đã được tạo thành công';
-      return ApiResponse.success(res, result, message);
+      return ApiResponse.success(res, result, 'Mã OTP đã được gửi đến email của bạn');
     } catch (error) {
       next(error);
     }
